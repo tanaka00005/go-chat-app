@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 )
 
 func checkError(err error, context string) {
@@ -22,6 +23,7 @@ func main(){
 		os.Exit(1)
     }
 	service := os.Args[1]
+	
 
 	// host:portの文字列をtcpaddrに変換
 	// ②tcpAddrにipとポートが入ったオブジェクトが格納される
@@ -41,7 +43,21 @@ func main(){
 	// ④ソケットにデータの書き込み
 	_, err = conn.Write([]byte("HEAD / HTTP/1.0\r\n\r\n"))
 	checkError(err,"conn write")
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go waitMessage(conn,&wg)
+
+	wg.Wait()
+	// ⑥接続の切断
+    conn.Close()
+}
+
+func waitMessage(conn net.Conn, wg *sync.WaitGroup){
 	res := make([]byte,1024)
+	defer wg.Done()
 
 	// fmt.Printf("ress:%s",res)
 	
@@ -52,6 +68,4 @@ func main(){
 	checkError(err,"conn read")
 	fmt.Println("response:",string(res[:len]))
 
-	// ⑥接続の切断
-    conn.Close()
 }
